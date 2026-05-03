@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Analizador de artículos académicos: genera mapa mental, ficha estructurada, marco teórico y referencias APA 7 a partir de un PDF.">
+<title>Mapa Mental · Estado del Arte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --c1:#5b4eff;
+  --c2:#ff5f7e;
+  --c3:#00c9a7;
+  --c4:#ff9f45;
+  --c5:#9b8fff;
+  --c6:#2dd4bf;
+  --c7:#f97316;
+  --c8:#3b82f6;
+  --ink:#12101f;
+  --ink2:#3a3660;
+  --muted:#5a5778;
+  --hint:#8e8caa;
+  --bg:#f5f4ff;
+  --card:#ffffff;
+  --brd:rgba(91,78,255,0.12);
+  --brd2:rgba(91,78,255,0.28);
+  --focus:#ffb800;
+  --r:20px;
+  --rm:12px;
+}
+
+@media(prefers-color-scheme:dark){
+  :root{
+    --ink:#eae8ff;
+    --ink2:#c4c0f5;
+    --muted:#a8a5cc;
+    --hint:#7c79a0;
+    --bg:#0d0c1a;
+    --card:#16142a;
+    --brd:rgba(140,130,255,0.15);
+    --brd2:rgba(140,130,255,0.3);
+  }
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  min-height:100vh;
+  overflow-x:hidden;
+  line-height:1.6;
+}
+
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 55% 40% at 15% 10%,rgba(91,78,255,.07) 0%,transparent 70%),
+    radial-gradient(ellipse 45% 35% at 88% 82%,rgba(255,95,126,.06) 0%,transparent 70%);
+}
+
+/* Skip link para accesibilidad */
+.skip-link{
+  position:absolute;left:-9999px;top:8px;z-index:9999;
+  padding:.5rem 1rem;background:var(--c1);color:#fff;
+  border-radius:8px;font-size:.85rem;text-decoration:none;
+}
+.skip-link:focus{left:8px}
+
+/* Focus visible mejorado */
+*:focus-visible{outline:2.5px solid var(--focus);outline-offset:3px;border-radius:4px}
+button:focus-visible,input:focus-visible{outline-offset:3px}
+
+.page{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:3rem 1.5rem 5rem}
+
+/* HEADER */
+.header{text-align:center;margin-bottom:3rem;animation:fadeUp .6s ease both}
+
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 14px;border-radius:999px;
+  background:rgba(91,78,255,.08);border:.5px solid var(--brd2);
+  font-size:.72rem;font-weight:500;color:var(--c1);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.1rem;
+}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--c1);animation:blink 2s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.badge-dot{animation:none}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+h1{
+  font-family:'Instrument Serif',Georgia,serif;
+  font-size:clamp(2rem,5vw,3rem);font-weight:400;
+  line-height:1.15;letter-spacing:-.02em;color:var(--ink);
+}
+h1 em{font-style:italic;color:var(--c1)}
+
+.header-sub{
+  margin:.9rem auto 0;max-width:560px;
+  font-size:.95rem;color:var(--muted);font-weight:300;line-height:1.65;
+}
+
+/* UPLOAD */
+.upload-section{animation:fadeUp .6s .1s ease both}
+
+.drop-zone{
+  position:relative;background:var(--card);
+  border:1.5px dashed var(--brd2);border-radius:var(--r);
+  padding:2.5rem 2rem;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s,transform .2s,box-shadow .2s;
+  margin-bottom:.85rem;overflow:hidden;
+}
+.drop-zone:hover,.drop-zone.over,.drop-zone:focus-within{
+  border-color:var(--c1);background:rgba(91,78,255,.02);
+  transform:translateY(-2px);box-shadow:0 12px 40px rgba(91,78,255,.13);
+}
+@media(prefers-reduced-motion:reduce){.drop-zone:hover,.drop-zone.over{transform:none}}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{
+  width:54px;height:54px;margin:0 auto 1rem;
+  background:rgba(91,78,255,.08);border:.5px solid var(--brd2);
+  border-radius:16px;display:flex;align-items:center;justify-content:center;
+}
+.dz-icon svg{width:24px;height:24px;color:var(--c1)}
+.drop-zone h3{font-size:1rem;font-weight:500;margin-bottom:.35rem}
+.drop-zone p{font-size:.82rem;color:var(--muted);font-weight:300}
+.drop-zone .kbd-hint{display:inline-block;margin-top:.5rem;font-size:.72rem;color:var(--hint)}
+.drop-zone .kbd-hint kbd{
+  display:inline-block;padding:1px 6px;border-radius:4px;
+  background:rgba(91,78,255,.08);border:.5px solid var(--brd2);
+  font-family:inherit;font-size:.7rem;color:var(--ink2);
+}
+
+/* PILL */
+.file-pill{
+  display:none;align-items:center;gap:.6rem;
+  padding:.55rem 1rem .55rem .85rem;border-radius:999px;
+  background:rgba(0,201,167,.07);border:.5px solid rgba(0,201,167,.3);
+  font-size:.82rem;color:var(--muted);margin-bottom:.85rem;
+}
+.file-pill.on{display:flex}
+.file-pill svg{width:14px;height:14px;color:var(--c3);flex-shrink:0}
+.file-pill .pname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-size:.83rem}
+.file-pill .psize{color:var(--hint);font-size:.75rem;flex-shrink:0}
+.file-pill button{
+  background:none;border:none;color:var(--hint);cursor:pointer;
+  font-size:1.3rem;line-height:1;padding:0 .25rem;flex-shrink:0;transition:color .15s;
+  border-radius:4px;
+}
+.file-pill button:hover,.file-pill button:focus-visible{color:var(--c2)}
+
+/* ERROR */
+.err{
+  display:none;padding:.7rem 1rem;border-radius:var(--rm);
+  background:rgba(255,95,126,.07);border:.5px solid rgba(255,95,126,.3);
+  font-size:.82rem;color:#d63b5e;margin-bottom:.85rem;
+}
+@media(prefers-color-scheme:dark){.err{color:#ff8da3}}
+.err.on{display:block}
+
+/* BUTTON */
+.btn-main{
+  width:100%;padding:.9rem 1.5rem;background:var(--c1);border:none;
+  border-radius:14px;color:#fff;font-family:'DM Sans',sans-serif;
+  font-size:.95rem;font-weight:500;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:.5rem;
+  transition:opacity .15s,transform .15s,box-shadow .15s;
+  box-shadow:0 4px 16px rgba(91,78,255,.3);margin-bottom:2.5rem;
+}
+.btn-main svg{width:16px;height:16px}
+.btn-main:hover:not(:disabled),.btn-main:focus-visible:not(:disabled){opacity:.92;transform:translateY(-2px);box-shadow:0 8px 28px rgba(91,78,255,.38)}
+.btn-main:active:not(:disabled){transform:translateY(0)}
+.btn-main:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+
+.btn-ghost{
+  padding:.5rem 1rem;background:none;border:.5px solid var(--brd2);
+  border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.8rem;
+  color:var(--muted);cursor:pointer;white-space:nowrap;
+  transition:color .15s,border-color .15s,background .15s;
+  display:inline-flex;align-items:center;gap:.4rem;
+}
+.btn-ghost svg{width:14px;height:14px}
+.btn-ghost:hover,.btn-ghost:focus-visible{color:var(--ink);border-color:var(--c1);background:rgba(91,78,255,.04)}
+
+.btn-export{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.5rem 1rem;background:var(--c1);border:none;
+  border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.8rem;
+  color:#fff;cursor:pointer;white-space:nowrap;font-weight:500;
+  transition:opacity .15s,transform .15s;box-shadow:0 2px 8px rgba(91,78,255,.25);
+}
+.btn-export svg{width:14px;height:14px}
+.btn-export:hover:not(:disabled),.btn-export:focus-visible:not(:disabled){opacity:.9;transform:translateY(-1px)}
+.btn-export:disabled{opacity:.5;cursor:not-allowed}
+
+.btn-export.alt{background:var(--c3);box-shadow:0 2px 8px rgba(0,201,167,.25)}
+
+/* LOADER */
+.loader{display:none;text-align:center;padding:3.5rem 2rem}
+.loader.on{display:block}
+.spin{
+  width:42px;height:42px;border:2.5px solid var(--brd2);border-top-color:var(--c1);
+  border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 1.1rem;
+}
+@media(prefers-reduced-motion:reduce){.spin{animation:spin 2s linear infinite}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader p{font-size:.9rem;color:var(--muted);font-weight:300;animation:breathe 1.5s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.loader p{animation:none}}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.4}}
+.loader-progress{
+  max-width:240px;margin:1rem auto 0;height:3px;
+  background:rgba(91,78,255,.12);border-radius:999px;overflow:hidden;
+}
+.loader-progress-bar{
+  height:100%;background:linear-gradient(90deg,var(--c1),var(--c5));
+  width:0%;transition:width .4s ease;border-radius:999px;
+}
+
+/* RESULT */
+.result{display:none}
+.result.on{display:flex;flex-direction:column;gap:1.25rem;animation:fadeUp .45s ease}
+@media(prefers-reduced-motion:reduce){.result.on{animation:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.result-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.result-title{font-family:'Instrument Serif',Georgia,serif;font-size:1.5rem;font-weight:400;color:var(--ink);letter-spacing:-.01em;line-height:1.25}
+.result-sub{font-size:.8rem;color:var(--muted);margin-top:.3rem;line-height:1.5}
+.hdr-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+
+/* TABS */
+.card{background:var(--card);border:.5px solid var(--brd);border-radius:var(--r);box-shadow:0 2px 16px rgba(91,78,255,.07)}
+
+.tab-bar{
+  display:flex;gap:0;padding:.6rem .6rem 0;
+  overflow-x:auto;scrollbar-width:thin;
+  scrollbar-color:var(--brd2) transparent;
+}
+.tab-bar::-webkit-scrollbar{height:4px}
+.tab-bar::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
+
+.tab-btn{
+  padding:.5rem 1rem;border:.5px solid transparent;border-bottom:none;
+  border-radius:10px 10px 0 0;font-family:'DM Sans',sans-serif;
+  font-size:.8rem;color:var(--muted);background:none;cursor:pointer;
+  transition:color .15s,background .15s,border-color .15s;
+  white-space:nowrap;flex-shrink:0;font-weight:400;
+}
+.tab-btn:hover{color:var(--ink2)}
+.tab-btn.active{background:var(--card);border-color:var(--brd);color:var(--ink);font-weight:500}
+.tab-line{height:.5px;background:var(--brd);margin:0 .6rem}
+
+.tab-panel{display:none;padding:1.4rem;background:var(--card);border:.5px solid var(--brd);border-top:none;border-radius:0 0 var(--r) var(--r)}
+.tab-panel.active{display:block}
+
+/* CANVAS */
+.canvas-wrap{position:relative}
+#mm-canvas{display:block;width:100%;border-radius:10px}
+.canvas-actions{
+  display:flex;gap:.5rem;justify-content:flex-end;margin-top:.85rem;
+  padding-top:.85rem;border-top:.5px solid var(--brd);flex-wrap:wrap;
+}
+.canvas-hint{font-size:.75rem;color:var(--hint);font-style:italic;margin-right:auto;align-self:center}
+
+/* FICHA — nuevo apartado */
+.ficha{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:.85rem;
+}
+.ficha-row{
+  background:var(--bg);border:.5px solid var(--brd);
+  border-radius:14px;padding:.95rem 1.1rem;
+  border-left:3px solid var(--c1);
+}
+.ficha-row.full{grid-column:1/-1}
+.ficha-label{
+  font-size:.7rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--c1);margin-bottom:.4rem;
+  display:flex;align-items:center;gap:.4rem;
+}
+.ficha-label svg{width:13px;height:13px}
+.ficha-value{
+  font-size:.9rem;color:var(--ink2);line-height:1.6;font-weight:300;
+}
+.ficha-value strong{font-weight:500;color:var(--ink)}
+.ficha-empty{color:var(--hint);font-style:italic;font-size:.85rem}
+
+/* TEORÍAS */
+.theories-list{display:flex;flex-direction:column;gap:.85rem}
+.theory-item{
+  background:var(--bg);border:.5px solid var(--brd);border-radius:14px;
+  padding:1rem 1.15rem;border-left:3px solid var(--c5);
+  transition:transform .15s,border-color .15s;
+}
+.theory-item:hover{transform:translateY(-1px);border-left-color:var(--c1)}
+.theory-name{
+  font-size:.95rem;font-weight:500;color:var(--ink);
+  margin-bottom:.35rem;display:flex;align-items:center;gap:.5rem;
+}
+.theory-author{
+  font-size:.78rem;color:var(--c1);font-weight:500;
+  background:rgba(91,78,255,.08);padding:2px 9px;border-radius:999px;
+}
+.theory-desc{font-size:.85rem;color:var(--muted);line-height:1.65;font-weight:300}
+
+/* ESTUDIOS CITADOS */
+.cited-list{display:flex;flex-direction:column;gap:.85rem}
+.cited-item{
+  background:var(--bg);border:.5px solid var(--brd);border-radius:14px;
+  padding:1rem 1.15rem;border-left:3px solid var(--c4);
+  transition:transform .15s;
+}
+.cited-item:hover{transform:translateY(-1px)}
+.cited-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-bottom:.5rem;flex-wrap:wrap}
+.cited-author{font-size:.9rem;font-weight:500;color:var(--ink)}
+.cited-times{
+  font-size:.7rem;font-weight:600;color:var(--c4);
+  background:rgba(255,159,69,.12);padding:3px 9px;border-radius:999px;
+  white-space:nowrap;
+}
+.cited-ref{font-size:.83rem;color:var(--muted);line-height:1.65;font-weight:300;margin-bottom:.4rem}
+.cited-ref em{font-style:italic;color:var(--ink2)}
+.cited-context{
+  font-size:.78rem;color:var(--hint);line-height:1.55;font-style:italic;
+  padding-top:.5rem;border-top:.5px dashed var(--brd);
+}
+.cited-copy-btn{
+  margin-top:.6rem;padding:.3rem .7rem;background:none;
+  border:.5px solid var(--brd2);border-radius:8px;
+  font-family:inherit;font-size:.72rem;color:var(--muted);cursor:pointer;
+  transition:color .15s,border-color .15s;
+}
+.cited-copy-btn:hover,.cited-copy-btn:focus-visible{color:var(--c4);border-color:var(--c4)}
+.cited-copy-btn.copied{color:var(--c3);border-color:var(--c3)}
+
+.empty-tab{
+  text-align:center;padding:2.5rem 1rem;color:var(--hint);
+  font-size:.88rem;font-style:italic;font-weight:300;
+}
+.empty-tab svg{width:36px;height:36px;margin:0 auto .75rem;display:block;opacity:.5}
+
+/* SUMMARY */
+.summary-text{
+  font-size:.95rem;color:var(--ink2);line-height:1.85;font-weight:300;
+  padding:1.2rem 1.4rem;
+  background:rgba(91,78,255,.04);border-left:3px solid var(--c1);
+  border-radius:0 var(--rm) var(--rm) 0;
+}
+
+/* CARDS */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.85rem}
+
+.cat-card{
+  background:var(--bg);border:.5px solid var(--brd);border-radius:14px;
+  padding:1rem 1.1rem;transition:border-color .15s,transform .15s;
+}
+.cat-card:hover{border-color:var(--brd2);transform:translateY(-2px)}
+@media(prefers-reduced-motion:reduce){.cat-card:hover{transform:none}}
+.cat-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
+.cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-name{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+.cat-items{list-style:none}
+.cat-items li{
+  font-size:.85rem;color:var(--muted);padding:.32rem 0;
+  border-bottom:.5px solid var(--brd);display:flex;gap:.45rem;
+  line-height:1.55;font-weight:300;
+}
+.cat-items li:last-child{border-bottom:none}
+.cat-items li::before{content:'›';color:var(--hint);flex-shrink:0;font-weight:500}
+
+/* CITATION */
+.citation-block{display:flex;flex-direction:column;gap:1rem}
+.cite-section{border:.5px solid var(--brd);border-radius:14px;overflow:hidden}
+.cite-section-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.75rem 1rem;background:rgba(91,78,255,.04);border-bottom:.5px solid var(--brd);
+  gap:1rem;
+}
+.cite-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--c1)}
+.cite-copy{
+  padding:.32rem .75rem;background:none;border:.5px solid var(--brd2);border-radius:8px;
+  font-family:'DM Sans',sans-serif;font-size:.72rem;color:var(--muted);cursor:pointer;
+  transition:color .15s,border-color .15s;white-space:nowrap;flex-shrink:0;
+}
+.cite-copy:hover,.cite-copy:focus-visible{color:var(--c1);border-color:var(--c1)}
+.cite-copy.copied{color:var(--c3);border-color:var(--c3)}
+
+.cite-content{
+  padding:1rem;font-size:.9rem;color:var(--ink2);line-height:1.75;
+  font-weight:300;word-break:break-word;
+}
+.cite-content strong{font-weight:500;color:var(--ink)}
+.cite-content em{font-style:italic}
+.cite-hint{font-size:.75rem;color:var(--hint);margin-top:.5rem;padding:0 1rem 1rem;font-style:italic}
+
+.cite-note{
+  padding:.85rem 1rem;background:rgba(0,201,167,.05);border:.5px solid rgba(0,201,167,.25);
+  border-radius:var(--rm);font-size:.8rem;color:var(--muted);line-height:1.6;font-weight:300;
+}
+.cite-note strong{color:#00a085;font-weight:500}
+@media(prefers-color-scheme:dark){.cite-note strong{color:#33dcb8}}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:var(--bg);
+  padding:.75rem 1.25rem;border-radius:12px;
+  font-size:.85rem;font-weight:500;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+  opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s;
+  z-index:9999;
+  display:flex;align-items:center;gap:.5rem;
+}
+.toast svg{width:14px;height:14px}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* FOOTER */
+.footer{text-align:center;margin-top:4rem;font-size:.75rem;color:var(--hint);font-weight:300;letter-spacing:.02em}
+.footer-shortcuts{margin-top:.5rem;font-size:.7rem}
+.footer-shortcuts kbd{
+  display:inline-block;padding:1px 5px;border-radius:3px;
+  background:rgba(91,78,255,.06);border:.5px solid var(--brd);
+  font-family:inherit;font-size:.65rem;
+}
+
+@media(max-width:540px){
+  .page{padding:2rem 1rem 3rem}
+  h1{font-size:1.8rem}
+  .tab-btn{padding:.4rem .7rem;font-size:.74rem}
+  .hdr-actions{width:100%}
+  .hdr-actions > *{flex:1;justify-content:center}
+  .result-header{flex-direction:column;align-items:stretch}
+}
+
+/* Print */
+@media print{
+  body::before,.upload-section,.btn-main,.tab-bar,.tab-line,.hdr-actions,.footer,.canvas-actions{display:none!important}
+  .page{padding:1rem;max-width:100%}
+  .tab-panel{display:block!important;border:none;padding:1rem 0;page-break-inside:avoid}
+  .card{box-shadow:none;border:none}
+}
+</style>
+</head>
+<body>
+<a href="#mainContent" class="skip-link">Saltar al contenido principal</a>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="badge" role="status"><span class="badge-dot" aria-hidden="true"></span>IA para investigación</div>
+    <h1>Mapa mental<br><em>estado del arte</em></h1>
+    <p class="header-sub">Sube tu artículo académico en PDF y obtén un mapa mental, ficha estructurada, marco teórico, estudios citados y referencia APA 7 — listo para descargar.</p>
+  </header>
+
+  <main id="mainContent">
+
+  <!-- UPLOAD -->
+  <section id="uploadSection" class="upload-section" aria-labelledby="uploadHeading">
+    <h2 id="uploadHeading" class="visually-hidden" style="position:absolute;left:-9999px">Subir documento</h2>
+
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Subir archivo PDF: arrastra o presiona Enter para seleccionar">
+      <input type="file" id="pdfInput" accept=".pdf,application/pdf" aria-label="Seleccionar archivo PDF">
+      <div class="dz-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
+        </svg>
+      </div>
+      <h3>Arrastra tu PDF aquí</h3>
+      <p>o haz clic para seleccionarlo &nbsp;·&nbsp; máx. 20 MB</p>
+      <span class="kbd-hint">o pulsa <kbd>Enter</kbd> para abrir el selector</span>
+    </div>
+
+    <div class="file-pill" id="filePill" role="status" aria-live="polite">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span class="pname" id="pillName"></span>
+      <span class="psize" id="pillSize"></span>
+      <button type="button" onclick="clearFile()" aria-label="Quitar archivo seleccionado">×</button>
+    </div>
+
+    <div class="err" id="errBar" role="alert" aria-live="assertive"></div>
+
+    <button class="btn-main" id="btnRun" type="button" disabled onclick="analyze()" aria-describedby="btnRunHint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Generar análisis completo
+    </button>
+    <span id="btnRunHint" style="position:absolute;left:-9999px">Analizar el PDF cargado y generar mapa mental, ficha, teorías, estudios citados y referencia APA</span>
+  </section>
+
+  <!-- LOADER -->
+  <div class="loader" id="loader" role="status" aria-live="polite" aria-atomic="true">
+    <div class="spin" aria-hidden="true"></div>
+    <p id="loaderMsg">Leyendo el documento…</p>
+    <div class="loader-progress" aria-hidden="true">
+      <div class="loader-progress-bar" id="loaderBar"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result" id="result">
+
+    <div class="result-header">
+      <div>
+        <div class="result-title" id="rTitle">Mapa mental</div>
+        <div class="result-sub" id="rSub"></div>
+      </div>
+      <div class="hdr-actions">
+        <button class="btn-export" type="button" onclick="exportPDF()" aria-label="Descargar análisis completo en PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          PDF completo
+        </button>
+        <button class="btn-export alt" type="button" onclick="exportJSON()" aria-label="Descargar datos del análisis en formato JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+          JSON
+        </button>
+        <button class="btn-ghost" type="button" onclick="reset()" aria-label="Comenzar un nuevo análisis">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+          Nuevo
+        </button>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="card" id="tabCard">
+      <div class="tab-bar" role="tablist" aria-label="Secciones del análisis">
+        <button class="tab-btn active" id="tb-visual" role="tab" aria-selected="true" aria-controls="tab-visual" onclick="switchTab('visual')">Mapa visual</button>
+        <button class="tab-btn" id="tb-ficha" role="tab" aria-selected="false" aria-controls="tab-ficha" onclick="switchTab('ficha')">Ficha</button>
+        <button class="tab-btn" id="tb-cards" role="tab" aria-selected="false" aria-controls="tab-cards" onclick="switchTab('cards')">Categorías</button>
+        <button class="tab-btn" id="tb-theories" role="tab" aria-selected="false" aria-controls="tab-theories" onclick="switchTab('theories')">Teorías</button>
+        <button class="tab-btn" id="tb-cited" role="tab" aria-selected="false" aria-controls="tab-cited" onclick="switchTab('cited')">Estudios citados</button>
+        <button class="tab-btn" id="tb-summary" role="tab" aria-selected="false" aria-controls="tab-summary" onclick="switchTab('summary')">Síntesis</button>
+        <button class="tab-btn" id="tb-cite" role="tab" aria-selected="false" aria-controls="tab-cite" onclick="switchTab('cite')">Citar (APA 7)</button>
+      </div>
+      <div class="tab-line"></div>
+
+      <div class="tab-panel active" id="tab-visual" role="tabpanel" aria-labelledby="tb-visual">
+        <div class="canvas-wrap">
+          <canvas id="mm-canvas" height="540" aria-label="Mapa mental visual del estado del arte"></canvas>
+        </div>
+        <div class="canvas-actions">
+          <span class="canvas-hint">Descarga el mapa por separado</span>
+          <button class="btn-ghost" type="button" onclick="downloadCanvasPNG()" aria-label="Descargar mapa como imagen PNG">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            PNG
+          </button>
+          <button class="btn-ghost" type="button" onclick="downloadCanvasPDF()" aria-label="Descargar mapa como PDF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            PDF (solo mapa)
+          </button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-ficha" role="tabpanel" aria-labelledby="tb-ficha">
+        <div class="ficha" id="fichaContent"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-cards" role="tabpanel" aria-labelledby="tb-cards">
+        <div class="cards-grid" id="cardsGrid"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-theories" role="tabpanel" aria-labelledby="tb-theories">
+        <div class="theories-list" id="theoriesList"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-cited" role="tabpanel" aria-labelledby="tb-cited">
+        <div class="cited-list" id="citedList"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-summary" role="tabpanel" aria-labelledby="tb-summary">
+        <div class="summary-text" id="summaryText"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-cite" role="tabpanel" aria-labelledby="tb-cite">
+        <div class="citation-block" id="citationBlock"></div>
+      </div>
+    </div>
+
+  </div>
+
+  </main>
+
+  <footer class="footer">
+    <div>Powered by Claude AI · Anthropic · Análisis de investigación académica</div>
+    <div class="footer-shortcuts" aria-label="Atajos de teclado">
+      <kbd>Ctrl</kbd> + <kbd>Enter</kbd> analizar &nbsp;·&nbsp;
+      <kbd>1</kbd>–<kbd>7</kbd> cambiar pestaña &nbsp;·&nbsp;
+      <kbd>Esc</kbd> nuevo análisis
+    </div>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+  <span id="toastMsg">Listo</span>
+</div>
+
+<script>
+const COLORS = ['#5b4eff','#ff5f7e','#00c9a7','#ff9f45','#9b8fff','#2dd4bf','#f97316','#3b82f6'];
+let pdfB64 = null, lastData = null, pdfMeta = {};
+let isAnalyzing = false;
+
+const $ = id => document.getElementById(id);
+
+// ── Toast notifications
+function toast(msg) {
+  $('toastMsg').textContent = msg;
+  $('toast').classList.add('on');
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => $('toast').classList.remove('on'), 2400);
+}
+
+// ── File handling
+const dropZone = $('dropZone'), pdfInput = $('pdfInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+dropZone.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pdfInput.click(); }
+});
+pdfInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+  return (b / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function handleFile(f) {
+  hideErr();
+  if (!f.name.toLowerCase().endsWith('.pdf') && f.type !== 'application/pdf') {
+    showErr('Solo se aceptan archivos PDF.'); return;
+  }
+  if (f.size > 20 * 1024 * 1024) {
+    showErr('Archivo demasiado grande. Máximo 20 MB.'); return;
+  }
+  if (f.size < 1024) {
+    showErr('El archivo parece estar vacío o dañado.'); return;
+  }
+  pdfMeta = { name: f.name, size: fmtSize(f.size), bytes: f.size };
+  $('pillName').textContent = f.name;
+  $('pillSize').textContent = pdfMeta.size;
+  $('filePill').classList.add('on');
+  $('btnRun').disabled = false;
+  const r = new FileReader();
+  r.onload = () => { pdfB64 = r.result.split(',')[1]; };
+  r.onerror = () => showErr('No se pudo leer el archivo. Intenta de nuevo.');
+  r.readAsDataURL(f);
+}
+
+function clearFile() {
+  pdfB64 = null;
+  pdfInput.value = '';
+  $('filePill').classList.remove('on');
+  $('btnRun').disabled = true;
+  hideErr();
+}
+function showErr(m) { $('errBar').textContent = m; $('errBar').classList.add('on'); }
+function hideErr() { $('errBar').classList.remove('on'); }
+
+// ── Loader
+const loadMsgs = [
+  'Leyendo el documento…',
+  'Extrayendo conceptos clave…',
+  'Identificando categorías del estado del arte…',
+  'Detectando marco teórico…',
+  'Localizando estudios más citados…',
+  'Construyendo el mapa mental…',
+  'Generando referencias APA 7…',
+  'Finalizando síntesis…'
+];
+let loadTimer = null, loadStart = 0;
+function startLoader() {
+  let i = 0;
+  $('loaderMsg').textContent = loadMsgs[0];
+  $('loaderBar').style.width = '5%';
+  loadStart = Date.now();
+  loadTimer = setInterval(() => {
+    i = (i + 1) % loadMsgs.length;
+    $('loaderMsg').textContent = loadMsgs[i];
+    const elapsed = (Date.now() - loadStart) / 1000;
+    // pseudo-progress: asintótico, capa al 92%
+    const pct = Math.min(92, 5 + Math.atan(elapsed / 10) * 60);
+    $('loaderBar').style.width = pct + '%';
+  }, 2200);
+  $('loader').classList.add('on');
+  $('uploadSection').style.display = 'none';
+}
+function stopLoader() {
+  clearInterval(loadTimer);
+  $('loaderBar').style.width = '100%';
+  setTimeout(() => $('loader').classList.remove('on'), 200);
+}
+
+// ── Analyze
+async function analyze() {
+  if (!pdfB64 || isAnalyzing) return;
+  isAnalyzing = true;
+  hideErr();
+  $('btnRun').disabled = true;
+  startLoader();
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 6000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfB64 } },
+            { type: 'text', text: `Analiza este artículo de investigación académica con profundidad y devuelve ÚNICAMENTE un JSON válido (sin backticks, sin texto adicional, sin explicación):
+
+{
+  "titulo": "Título completo del artículo tal como aparece en el paper",
+  "autores": ["Apellido, N.", "Apellido2, N."],
+  "anio": "2023",
+  "revista": "Nombre de la revista o editorial",
+  "volumen": "14",
+  "numero": "2",
+  "paginas": "123-145",
+  "doi": "10.xxxx/xxxxx",
+  "url": "",
+  "ciudad_editorial": "",
+  "ficha": {
+    "objetivo": "Objetivo principal del estudio en 1-2 oraciones claras",
+    "metodologia": "Tipo de estudio, enfoque (cualitativo/cuantitativo/mixto), diseño y técnicas de recolección",
+    "muestra": "Descripción de la muestra: tamaño, características, contexto, criterios de selección",
+    "resultados": "Hallazgos principales del estudio en 2-4 oraciones, mencionando datos concretos si están disponibles",
+    "conclusiones": "Conclusiones e implicaciones del estudio",
+    "palabras_clave": ["palabra1","palabra2","palabra3","palabra4","palabra5"]
+  },
+  "teorias": [
+    {
+      "nombre": "Nombre de la teoría o marco teórico",
+      "autor": "Autor principal y año (ej: Vygotsky, 1978)",
+      "descripcion": "Cómo la usa el artículo y qué aporta al estudio en 1-2 oraciones"
+    }
+  ],
+  "estudios_citados": [
+    {
+      "autores": "Apellido, N. y Apellido, N.",
+      "anio": "2020",
+      "titulo": "Título del estudio citado",
+      "fuente": "Revista o editorial",
+      "veces_citado": 4,
+      "referencia_apa": "Apellido, N. y Apellido, N. (2020). Título del estudio. Revista, 12(3), 45-67. https://doi.org/...",
+      "contexto": "Para qué se cita en el artículo (ej: marco teórico, antecedente metodológico, comparación de hallazgos)"
+    }
+  ],
+  "resumen_estado_arte": "Síntesis académica en 4-5 oraciones del estado del arte que cubre el paper. Menciona enfoques teóricos, metodologías comparadas y brechas identificadas.",
+  "categorias": [
+    {
+      "nombre": "Nombre categoría",
+      "items": ["item preciso y completo","item 2","item 3","item 4","item 5"]
+    }
+  ]
+}
+
+INSTRUCCIONES OBLIGATORIAS:
+1. METADATOS: Extrae los datos bibliográficos EXACTOS del paper. Si un campo no aparece, usa "".
+2. FICHA: Completa todos los campos. Si algún dato no aplica, escribe "No reportado en el documento".
+3. TEORÍAS: Identifica entre 2 y 5 teorías o marcos conceptuales que el artículo utiliza. Incluye al autor seminal de cada teoría.
+4. ESTUDIOS CITADOS: Lista los 4-6 estudios MÁS RELEVANTES o MÁS CITADOS dentro del paper (los que aparecen varias veces o sustentan argumentos centrales). Construye su referencia APA 7 completa con los datos disponibles. El campo "veces_citado" es una estimación de cuántas veces aparece en el artículo (mínimo 1).
+5. CATEGORÍAS: Genera entre 5 y 7 categorías que cubran: (a) Conceptos teóricos clave, (b) Autores y estudios citados, (c) Metodologías, (d) Brechas/limitaciones, (e) Tendencias/hallazgos. Cada ítem máximo 10 palabras.
+6. IDIOMA: Todo en español.
+7. SOLO JSON, sin markdown, sin explicaciones.` }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error?.message || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const cleaned = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    stopLoader();
+    isAnalyzing = false;
+    renderResult(parsed);
+    toast('Análisis completo ✓');
+  } catch(e) {
+    stopLoader();
+    isAnalyzing = false;
+    $('uploadSection').style.display = '';
+    $('btnRun').disabled = false;
+    showErr('Error al analizar: ' + e.message + '. Verifica que el PDF tenga texto legible (no solo imágenes escaneadas).');
+  }
+}
+
+// ── Render
+function renderResult(data) {
+  lastData = data;
+  $('rTitle').textContent = data.titulo || 'Mapa mental';
+  const subParts = [];
+  if (data.autores && data.autores.length) {
+    subParts.push(data.autores.length > 1 ? data.autores[0] + ' et al.' : data.autores[0]);
+  }
+  if (data.anio) subParts.push(data.anio);
+  if (data.revista) subParts.push(data.revista);
+  subParts.push(data.categorias.length + ' categorías');
+  if (data.teorias && data.teorias.length) subParts.push(data.teorias.length + ' teorías');
+  if (data.estudios_citados && data.estudios_citados.length) subParts.push(data.estudios_citados.length + ' estudios citados');
+  $('rSub').textContent = subParts.join(' · ');
+  $('summaryText').textContent = data.resumen_estado_arte || 'Sin resumen disponible.';
+  renderFicha(data);
+  renderCards(data.categorias);
+  renderTheories(data.teorias || []);
+  renderCited(data.estudios_citados || []);
+  renderCitation(data);
+  $('result').classList.add('on');
+  requestAnimationFrame(() => drawCanvas(data));
+  // Move focus to result for screen readers
+  $('rTitle').setAttribute('tabindex', '-1');
+  $('rTitle').focus({ preventScroll: false });
+}
+
+// ── Ficha estructurada
+function renderFicha(d) {
+  const f = d.ficha || {};
+  const autorAnio = ((d.autores && d.autores.length ? d.autores.join('; ') : 'Autor desconocido')) + (d.anio ? ' (' + d.anio + ')' : '');
+  const palabras = f.palabras_clave && f.palabras_clave.length ? f.palabras_clave.join(' · ') : '';
+
+  const rows = [
+    { label: 'Autor(es) y año', icon: 'user', value: autorAnio, full: false },
+    { label: 'Título del estudio', icon: 'book', value: d.titulo || '', full: true },
+    { label: 'Objetivo', icon: 'target', value: f.objetivo, full: true },
+    { label: 'Metodología', icon: 'flask', value: f.metodologia, full: false },
+    { label: 'Muestra', icon: 'users', value: f.muestra, full: false },
+    { label: 'Resultados / Hallazgos', icon: 'chart', value: f.resultados, full: true },
+    { label: 'Conclusiones', icon: 'check', value: f.conclusiones, full: true },
+    { label: 'Palabras clave', icon: 'tag', value: palabras, full: true }
+  ];
+
+  const ICONS = {
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+    flask: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6L4 20a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-12V2"/><line x1="9" y1="2" x2="15" y2="2"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'
+  };
+
+  $('fichaContent').innerHTML = rows.map(r => `
+    <div class="ficha-row${r.full ? ' full' : ''}">
+      <div class="ficha-label">${ICONS[r.icon] || ''}${esc(r.label)}</div>
+      <div class="ficha-value">${r.value && r.value.trim() ? esc(r.value) : '<span class="ficha-empty">No reportado en el documento</span>'}</div>
+    </div>
+  `).join('');
+}
+
+// ── Cards
+function renderCards(cats) {
+  const g = $('cardsGrid'); g.innerHTML = '';
+  cats.forEach((cat, i) => {
+    const color = COLORS[i % COLORS.length];
+    const div = document.createElement('div'); div.className = 'cat-card';
+    div.innerHTML = `<div class="cat-head"><div class="cat-dot" style="background:${color}" aria-hidden="true"></div><div class="cat-name">${esc(cat.nombre)}</div></div><ul class="cat-items">${cat.items.map(it => `<li>${esc(it)}</li>`).join('')}</ul>`;
+    g.appendChild(div);
+  });
+}
+
+// ── Teorías
+function renderTheories(theories) {
+  const c = $('theoriesList');
+  if (!theories || theories.length === 0) {
+    c.innerHTML = `<div class="empty-tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      No se identificaron teorías o marcos conceptuales explícitos en el documento.
+    </div>`;
+    return;
+  }
+  c.innerHTML = theories.map(t => `
+    <div class="theory-item">
+      <div class="theory-name">${esc(t.nombre || 'Teoría sin nombrar')}${t.autor ? ` <span class="theory-author">${esc(t.autor)}</span>` : ''}</div>
+      <div class="theory-desc">${esc(t.descripcion || 'Sin descripción')}</div>
+    </div>
+  `).join('');
+}
+
+// ── Estudios citados
+function renderCited(cited) {
+  const c = $('citedList');
+  if (!cited || cited.length === 0) {
+    c.innerHTML = `<div class="empty-tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      No se detectaron estudios destacados con citas múltiples.
+    </div>`;
+    return;
+  }
+  // Ordenar por veces citado descendente
+  const sorted = [...cited].sort((a, b) => (b.veces_citado || 0) - (a.veces_citado || 0));
+  c.innerHTML = sorted.map((s, i) => {
+    const ref = s.referencia_apa || `${s.autores || 'Autor'} (${s.anio || 's.f.'}). ${s.titulo || 'Sin título'}. ${s.fuente || ''}`.trim();
+    const refSafe = escAttr(ref);
+    return `
+    <div class="cited-item">
+      <div class="cited-head">
+        <div class="cited-author">${esc(s.autores || 'Autor desconocido')}${s.anio ? ' (' + esc(s.anio) + ')' : ''}</div>
+        ${s.veces_citado ? `<div class="cited-times" aria-label="Citado ${s.veces_citado} veces">📌 ${s.veces_citado}× cit.</div>` : ''}
+      </div>
+      <div class="cited-ref"><em>${esc(s.titulo || '')}</em>${s.fuente ? '. ' + esc(s.fuente) : ''}</div>
+      <div class="cited-ref"><strong>Referencia APA:</strong> ${esc(ref)}</div>
+      ${s.contexto ? `<div class="cited-context">Uso en el artículo: ${esc(s.contexto)}</div>` : ''}
+      <button class="cited-copy-btn" type="button" data-i="${i}" onclick="copyCited(this, '${refSafe}')" aria-label="Copiar referencia APA al portapapeles">📋 Copiar referencia</button>
+    </div>`;
+  }).join('');
+}
+
+async function copyCited(btn, text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+    toast('Referencia copiada');
+  } catch(e) { toast('No se pudo copiar'); }
+}
+
+// ── Citation APA 7
+function buildAPA(d) {
+  const autores = (d.autores || []);
+  let autorStr = '';
+  if (autores.length === 0) autorStr = 'Autor desconocido';
+  else if (autores.length === 1) autorStr = autores[0] + '.';
+  else if (autores.length === 2) autorStr = autores[0] + ' y ' + autores[1] + '.';
+  else if (autores.length <= 20) autorStr = autores.slice(0, -1).join(', ') + ', y ' + autores[autores.length - 1] + '.';
+  else autorStr = autores.slice(0, 19).join(', ') + ', ... ' + autores[autores.length - 1] + '.';
+
+  const anio = d.anio ? `(${d.anio}).` : '(s.f.).';
+  const titulo = d.titulo ? `${d.titulo}.` : 'Sin título.';
+  let fuente = '';
+  if (d.revista) {
+    fuente = `<em>${d.revista}</em>`;
+    if (d.volumen) fuente += `, <em>${d.volumen}</em>`;
+    if (d.numero) fuente += `(${d.numero})`;
+    if (d.paginas) fuente += `, ${d.paginas}`;
+    fuente += '.';
+  } else if (d.ciudad_editorial) {
+    fuente = d.ciudad_editorial + '.';
+  }
+  const doi = d.doi ? ` https://doi.org/${d.doi.replace(/^https?:\/\/doi\.org\//, '')}` : (d.url ? ` ${d.url}` : '');
+
+  return `${autorStr} ${anio} ${titulo} ${fuente}${doi}`.trim();
+}
+
+function buildInText(d) {
+  const autores = d.autores || [];
+  const anio = d.anio || 's.f.';
+  if (autores.length === 0) return `(Autor desconocido, ${anio})`;
+  const apellido0 = autores[0].split(',')[0].trim();
+  if (autores.length === 1) return `(${apellido0}, ${anio})`;
+  if (autores.length === 2) {
+    const apellido1 = autores[1].split(',')[0].trim();
+    return `(${apellido0} y ${apellido1}, ${anio})`;
+  }
+  return `(${apellido0} et al., ${anio})`;
+}
+
+function renderCitation(d) {
+  const apa = buildAPA(d);
+  const intext = buildInText(d);
+  const block = $('citationBlock');
+  block.innerHTML = `
+    <div class="cite-section">
+      <div class="cite-section-head">
+        <span class="cite-label">Referencia bibliográfica — APA 7</span>
+        <button class="cite-copy" type="button" id="copyRef" onclick="copyText('copyRef', this.dataset.text)" data-text="${escAttr(stripHtml(apa))}" aria-label="Copiar referencia APA al portapapeles">📋 Copiar</button>
+      </div>
+      <div class="cite-content">${apa}</div>
+      <div class="cite-hint">Colócala en tu lista de referencias al final del documento.</div>
+    </div>
+    <div class="cite-section">
+      <div class="cite-section-head">
+        <span class="cite-label">Cita en el texto — APA 7</span>
+        <button class="cite-copy" type="button" id="copyInText" onclick="copyText('copyInText', this.dataset.text)" data-text="${escAttr(intext)}" aria-label="Copiar cita parentética al portapapeles">📋 Copiar</button>
+      </div>
+      <div class="cite-content"><strong>Cita parentética:</strong> ${esc(intext)}<br><br>
+      <strong>Cita narrativa:</strong> ${esc(buildNarrative(d))}</div>
+      <div class="cite-hint">Úsala dentro del párrafo donde menciones las ideas del autor.</div>
+    </div>
+    <div class="cite-note">
+      <strong>Nota:</strong> Verifica los datos bibliográficos contra el documento original. Si algún campo (DOI, volumen, páginas) aparece vacío, es porque no se encontró explícitamente en el PDF.
+    </div>`;
+}
+
+function buildNarrative(d) {
+  const autores = d.autores || [];
+  const anio = d.anio || 's.f.';
+  if (autores.length === 0) return `Autor desconocido (${anio})`;
+  const apellido0 = autores[0].split(',')[0].trim();
+  if (autores.length === 1) return `${apellido0} (${anio})`;
+  if (autores.length === 2) {
+    const apellido1 = autores[1].split(',')[0].trim();
+    return `${apellido0} y ${apellido1} (${anio})`;
+  }
+  return `${apellido0} et al. (${anio})`;
+}
+
+async function copyText(btnId, text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = $(btnId);
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+    toast('Copiado al portapapeles');
+  } catch(e) { toast('No se pudo copiar'); }
+}
+
+// ── Tabs
+const TABS = ['visual','ficha','cards','theories','cited','summary','cite'];
+function switchTab(id) {
+  TABS.forEach(t => {
+    const btn = $('tb-' + t), panel = $('tab-' + t);
+    const active = t === id;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    panel.classList.toggle('active', active);
+  });
+  if (id === 'visual' && lastData) requestAnimationFrame(() => drawCanvas(lastData));
+}
+
+// ── Canvas Mind Map
+function drawCanvas(data) {
+  const canvas = $('mm-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 760;
+  const H = 540;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const subColor = isDark ? 'rgba(196,192,245,0.7)' : 'rgba(58,54,96,0.65)';
+
+  const cats = data.categorias;
+  const n = cats.length;
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W * 0.27, H * 0.32, 160);
+
+  // Branches
+  for (let i = 0; i < n; i++) {
+    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    const nx = cx + R * Math.cos(angle), ny = cy + R * Math.sin(angle);
+    const color = COLORS[i % COLORS.length];
+    const cpx = cx + R * 0.48 * Math.cos(angle), cpy = cy + R * 0.48 * Math.sin(angle);
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.quadraticCurveTo(cpx, cpy, nx, ny);
+    ctx.strokeStyle = color; ctx.globalAlpha = 0.32; ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const sub = cats[i].items.slice(0, 4);
+    const spread = Math.min(0.28, 1.1 / n);
+    sub.forEach((item, j) => {
+      const sa = angle + (j - (sub.length - 1) / 2) * spread;
+      const sr = R + 110;
+      const sx = cx + sr * Math.cos(sa), sy = cy + sr * Math.sin(sa);
+      ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(sx, sy);
+      ctx.strokeStyle = color; ctx.globalAlpha = 0.18; ctx.lineWidth = 1;
+      ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
+
+      ctx.font = '300 10.5px "DM Sans",system-ui,sans-serif';
+      ctx.fillStyle = subColor;
+      const isRight = sx > cx;
+      ctx.textAlign = isRight ? 'left' : 'right';
+      const tx = isRight ? sx + 7 : sx - 7;
+      const short = item.length > 32 ? item.slice(0, 30) + '…' : item;
+      ctx.fillText(short, tx, sy + 4);
+    });
+  }
+
+  // Category nodes
+  for (let i = 0; i < n; i++) {
+    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    const nx = cx + R * Math.cos(angle), ny = cy + R * Math.sin(angle);
+    const color = COLORS[i % COLORS.length];
+    const name = cats[i].nombre;
+    const bw = Math.max(name.length * 6.5 + 30, 90), bh = 32;
+
+    ctx.beginPath(); rrect(ctx, nx - bw/2, ny - bh/2, bw, bh, 9);
+    ctx.fillStyle = color; ctx.globalAlpha = isDark ? 0.18 : 0.12; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.fillStyle = color; ctx.font = '500 10.5px "DM Sans",system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(name.length > 22 ? name.slice(0, 20) + '…' : name, nx, ny + 4);
+  }
+
+  // Center node
+  const cw = 140, ch = 50;
+  ctx.beginPath(); rrect(ctx, cx - cw/2, cy - ch/2, cw, ch, 13);
+  ctx.fillStyle = COLORS[0]; ctx.globalAlpha = 0.96; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.font = '600 10.5px "DM Sans",system-ui,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('ESTADO DEL ARTE', cx, cy - 5);
+  ctx.globalAlpha = 0.7; ctx.font = '300 9px "DM Sans",system-ui,sans-serif';
+  const t = (data.titulo || '').slice(0, 28);
+  ctx.fillText(t, cx, cy + 11); ctx.globalAlpha = 1;
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+
+// ── Download canvas as PNG
+function downloadCanvasPNG() {
+  if (!lastData) return;
+  const wasActive = $('tab-visual').classList.contains('active');
+  if (!wasActive) {
+    $('tab-visual').classList.add('active');
+    drawCanvas(lastData);
+  }
+  setTimeout(() => {
+    const canvas = $('mm-canvas');
+    const filename = `mapa-mental_${safeFilename(lastData.titulo)}.png`;
+    canvas.toBlob(blob => {
+      saveBlob(blob, filename, 'PNG');
+      if (!wasActive) $('tab-visual').classList.remove('active');
+    }, 'image/png', 1.0);
+  }, 80);
+}
+
+// ── Helper universal para guardar blobs (PNG, JSON, etc.)
+function saveBlob(blob, filename, label) {
+  const url = URL.createObjectURL(blob);
+  try {
+    // Intento 1: descarga via <a download>
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    toast((label || 'Archivo') + ' descargado');
+  } catch(e) {
+    // Fallback: abrir en pestaña nueva
+    const win = window.open(url, '_blank');
+    if (!win) offerManualDownload(url, filename, label);
+    else toast((label || 'Archivo') + ' abierto en pestaña — usa "Guardar como"');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+}
+
+// ── Download only canvas as PDF (landscape)
+async function downloadCanvasPDF() {
+  if (!lastData || typeof window.jspdf === 'undefined') {
+    toast('Espera, librería cargando…'); return;
+  }
+  const wasActive = $('tab-visual').classList.contains('active');
+  if (!wasActive) { $('tab-visual').classList.add('active'); drawCanvas(lastData); }
+  await new Promise(r => setTimeout(r, 100));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const W = 297, H = 210, mar = 15;
+
+  // Header
+  doc.setFillColor(91,78,255); doc.rect(0, 0, W, 18, 'F');
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(255,255,255);
+  doc.text('MAPA MENTAL · ESTADO DEL ARTE', mar, 11);
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(220,216,255);
+  doc.text(new Date().toLocaleDateString('es-ES'), W - mar, 11, { align: 'right' });
+
+  // Title
+  doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(18,16,31);
+  const tLines = doc.splitTextToSize(lastData.titulo || 'Sin título', W - mar*2);
+  doc.text(tLines, mar, 28);
+  let y = 28 + tLines.length * 5.5;
+
+  if (lastData.autores && lastData.autores.length) {
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(110,107,138);
+    const meta = lastData.autores.slice(0,3).join(', ') + (lastData.autores.length > 3 ? ' et al.' : '') + (lastData.anio ? ' (' + lastData.anio + ')' : '');
+    doc.text(meta, mar, y); y += 4;
+  }
+  y += 3;
+
+  // Canvas image
+  const canvas = $('mm-canvas');
+  const imgData = canvas.toDataURL('image/png', 1.0);
+  const availH = H - y - 10;
+  const availW = W - mar*2;
+  const cRatio = canvas.height / canvas.width;
+  let imgW = availW, imgH = imgW * cRatio;
+  if (imgH > availH) { imgH = availH; imgW = imgH / cRatio; }
+  doc.addImage(imgData, 'PNG', (W - imgW) / 2, y, imgW, imgH);
+
+  // Footer
+  doc.setFontSize(7); doc.setTextColor(176,174,200);
+  doc.text('Generado con Claude AI · Anthropic', mar, H - 5);
+
+  savePDF(doc, `mapa-mental_${safeFilename(lastData.titulo)}.pdf`, 'Mapa');
+  if (!wasActive) $('tab-visual').classList.remove('active');
+}
+
+// ── Export PDF completo
+async function exportPDF() {
+  if (!lastData || typeof window.jspdf === 'undefined') {
+    toast('Espera, librería cargando…'); return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, H = 297, mar = 18;
+
+  function setFont(size, weight, color) {
+    doc.setFontSize(size);
+    doc.setFont('helvetica', weight || 'normal');
+    doc.setTextColor(...(color || [18,16,31]));
+  }
+  function hexToRgb(hex) {
+    return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+  }
+  function ensureSpace(needed, currentY) {
+    if (currentY + needed > H - 18) { doc.addPage(); return mar; }
+    return currentY;
+  }
+  function sectionTitle(text, y) {
+    y = ensureSpace(12, y);
+    setFont(11, 'bold', [91,78,255]);
+    doc.text(text, mar, y);
+    doc.setDrawColor(91,78,255); doc.setLineWidth(0.4);
+    doc.line(mar, y + 1.5, W - mar, y + 1.5);
+    return y + 6;
+  }
+
+  let y = mar;
+
+  // Header band
+  doc.setFillColor(91,78,255); doc.rect(0, 0, W, 22, 'F');
+  setFont(11, 'bold', [255,255,255]);
+  doc.text('MAPA MENTAL · ESTADO DEL ARTE', mar, 14);
+  setFont(8, 'normal', [200,196,255]);
+  doc.text('Generado el ' + new Date().toLocaleDateString('es-ES'), W - mar, 14, { align: 'right' });
+
+  y = 32;
+
+  // Title
+  setFont(16, 'bold', [18,16,31]);
+  const titleLines = doc.splitTextToSize(lastData.titulo || 'Sin título', W - mar*2);
+  doc.text(titleLines, mar, y);
+  y += titleLines.length * 7 + 3;
+
+  if (lastData.autores && lastData.autores.length) {
+    setFont(9, 'normal', [110,107,138]);
+    const meta = lastData.autores.slice(0,3).join(', ') + (lastData.autores.length > 3 ? ' et al.' : '') + (lastData.anio ? ' (' + lastData.anio + ')' : '') + (lastData.revista ? ' · ' + lastData.revista : '');
+    doc.text(meta, mar, y); y += 5;
+  }
+
+  doc.setDrawColor(91,78,255); doc.setLineWidth(0.4);
+  doc.line(mar, y, W - mar, y); y += 8;
+
+  // ── 1. MAPA VISUAL
+  const canvas = $('mm-canvas');
+  if (canvas) {
+    const wasActive = $('tab-visual').classList.contains('active');
+    if (!wasActive) { $('tab-visual').classList.add('active'); drawCanvas(lastData); }
+    await new Promise(r => setTimeout(r, 200));
+
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const imgW = W - mar * 2;
+    const imgH = Math.round(imgW * canvas.height / canvas.width / (window.devicePixelRatio || 1));
+    const safeH = Math.min(imgH, 95);
+    doc.addImage(imgData, 'PNG', mar, y, imgW, safeH);
+    y += safeH + 8;
+
+    if (!wasActive) $('tab-visual').classList.remove('active');
+  }
+
+  // ── 2. SÍNTESIS
+  y = ensureSpace(40, y);
+  if (lastData.resumen_estado_arte) {
+    y = sectionTitle('Síntesis del estado del arte', y);
+    doc.setFillColor(247, 246, 255); doc.setDrawColor(220,216,255); doc.setLineWidth(0.5);
+    const synLines = doc.splitTextToSize(lastData.resumen_estado_arte, W - mar*2 - 8);
+    const synH = synLines.length * 5 + 6;
+    doc.rect(mar, y - 3, W - mar*2, synH, 'F');
+    doc.setFillColor(91,78,255); doc.rect(mar, y - 3, 0.8, synH, 'F');
+    doc.setDrawColor(220,216,255); doc.rect(mar, y - 3, W - mar*2, synH, 'S');
+    setFont(9, 'normal', [58,54,96]);
+    doc.text(synLines, mar + 5, y + 2);
+    y += synH + 8;
+  }
+
+  // ── 3. FICHA ESTRUCTURADA
+  doc.addPage(); y = mar;
+  y = sectionTitle('Ficha del estudio', y);
+
+  const ficha = lastData.ficha || {};
+  const autorAnio = ((lastData.autores && lastData.autores.length ? lastData.autores.join('; ') : 'Autor desconocido')) + (lastData.anio ? ' (' + lastData.anio + ')' : '');
+  const fichaRows = [
+    ['Autor(es) y año', autorAnio],
+    ['Título', lastData.titulo || ''],
+    ['Objetivo', ficha.objetivo],
+    ['Metodología', ficha.metodologia],
+    ['Muestra', ficha.muestra],
+    ['Resultados / Hallazgos', ficha.resultados],
+    ['Conclusiones', ficha.conclusiones],
+    ['Palabras clave', ficha.palabras_clave && ficha.palabras_clave.length ? ficha.palabras_clave.join(' · ') : '']
+  ];
+
+  fichaRows.forEach(([label, val]) => {
+    const v = val && String(val).trim() ? String(val) : 'No reportado en el documento';
+    const lines = doc.splitTextToSize(v, W - mar*2 - 10);
+    const blockH = 5 + lines.length * 4.5 + 4;
+    y = ensureSpace(blockH + 3, y);
+
+    // Background
+    doc.setFillColor(247,246,255); doc.rect(mar, y, W - mar*2, blockH, 'F');
+    doc.setFillColor(91,78,255); doc.rect(mar, y, 1, blockH, 'F');
+    doc.setDrawColor(220,216,255); doc.setLineWidth(0.3);
+    doc.rect(mar, y, W - mar*2, blockH, 'S');
+
+    // Label
+    setFont(8, 'bold', [91,78,255]);
+    doc.text(label.toUpperCase(), mar + 4, y + 4.5);
+    // Value
+    setFont(9, 'normal', [58,54,96]);
+    doc.text(lines, mar + 4, y + 9.5);
+
+    y += blockH + 3;
+  });
+  y += 4;
+
+  // ── 4. TEORÍAS
+  if (lastData.teorias && lastData.teorias.length) {
+    y = ensureSpace(20, y);
+    y = sectionTitle('Marco teórico', y);
+
+    lastData.teorias.forEach(t => {
+      const desc = t.descripcion || '';
+      const descLines = doc.splitTextToSize(desc, W - mar*2 - 8);
+      const blockH = 6 + descLines.length * 4.2 + 4;
+      y = ensureSpace(blockH + 3, y);
+
+      doc.setFillColor(248,246,255); doc.rect(mar, y, W - mar*2, blockH, 'F');
+      doc.setFillColor(155,143,255); doc.rect(mar, y, 1, blockH, 'F');
+      doc.setDrawColor(220,216,255); doc.rect(mar, y, W - mar*2, blockH, 'S');
+
+      setFont(9, 'bold', [60,40,180]);
+      doc.text(t.nombre || 'Teoría', mar + 4, y + 5);
+      if (t.autor) {
+        setFont(8, 'italic', [120,100,200]);
+        const nameW = doc.getTextWidth(t.nombre || 'Teoría');
+        doc.text('· ' + t.autor, mar + 4 + nameW + 2, y + 5);
+      }
+      setFont(8.5, 'normal', [58,54,96]);
+      doc.text(descLines, mar + 4, y + 10);
+      y += blockH + 2;
+    });
+    y += 4;
+  }
+
+  // ── 5. ESTUDIOS MÁS CITADOS
+  if (lastData.estudios_citados && lastData.estudios_citados.length) {
+    y = ensureSpace(25, y);
+    y = sectionTitle('Estudios más citados en el artículo', y);
+
+    const sortedCit = [...lastData.estudios_citados].sort((a, b) => (b.veces_citado || 0) - (a.veces_citado || 0));
+    sortedCit.forEach((s, idx) => {
+      const ref = s.referencia_apa || `${s.autores || 'Autor'} (${s.anio || 's.f.'}). ${s.titulo || ''}. ${s.fuente || ''}`.trim();
+      const refLines = doc.splitTextToSize(ref, W - mar*2 - 10);
+      const ctxLines = s.contexto ? doc.splitTextToSize('Uso: ' + s.contexto, W - mar*2 - 10) : [];
+      const blockH = 7 + refLines.length * 4.2 + (ctxLines.length ? ctxLines.length * 3.8 + 2 : 0) + 4;
+      y = ensureSpace(blockH + 3, y);
+
+      doc.setFillColor(255,250,242); doc.rect(mar, y, W - mar*2, blockH, 'F');
+      doc.setFillColor(255,159,69); doc.rect(mar, y, 1, blockH, 'F');
+      doc.setDrawColor(255,220,180); doc.rect(mar, y, W - mar*2, blockH, 'S');
+
+      // Header line: autores + veces citado
+      setFont(8.5, 'bold', [200,100,30]);
+      doc.text(`${idx + 1}. ${s.autores || 'Autor'}${s.anio ? ' (' + s.anio + ')' : ''}`, mar + 4, y + 5);
+      if (s.veces_citado) {
+        setFont(7.5, 'bold', [255,159,69]);
+        doc.text(`📌 ${s.veces_citado}× citado`, W - mar - 4, y + 5, { align: 'right' });
+      }
+
+      setFont(8, 'normal', [58,54,96]);
+      doc.text(refLines, mar + 4, y + 10);
+
+      if (ctxLines.length) {
+        setFont(7.5, 'italic', [140,110,80]);
+        doc.text(ctxLines, mar + 4, y + 10 + refLines.length * 4.2 + 3);
+      }
+
+      y += blockH + 2;
+    });
+    y += 4;
+  }
+
+  // ── 6. CATEGORÍAS
+  y = ensureSpace(30, y);
+  y = sectionTitle('Categorías del estado del arte', y);
+
+  const colW = (W - mar*2 - 4) / 2;
+  let col = 0, baseY = y;
+  lastData.categorias.forEach((cat, i) => {
+    const color = hexToRgb(COLORS[i % COLORS.length]);
+    const cardX = mar + col * (colW + 4);
+    let cardY = y;
+
+    doc.setFontSize(8);
+    const itemLines = cat.items.map(it => doc.splitTextToSize('› ' + it, colW - 8));
+    const totalLines = itemLines.reduce((a, l) => a + l.length, 0);
+    const cardH = 9 + totalLines * 4.5 + 4;
+
+    if (cardY + cardH > H - 18) {
+      if (col === 0) { doc.addPage(); y = mar; baseY = mar; cardY = mar; }
+      else { col = 0; y = baseY; cardY = y; doc.addPage(); y = mar; baseY = mar; cardY = mar; }
+    }
+
+    // Background tint
+    doc.setFillColor(color[0], color[1], color[2]);
+    if (doc.GState) doc.setGState(new doc.GState({ opacity: 0.08 }));
+    doc.rect(cardX, cardY, colW, cardH, 'F');
+    if (doc.GState) doc.setGState(new doc.GState({ opacity: 1 }));
+
+    doc.setDrawColor(...color); doc.setLineWidth(0.4);
+    doc.rect(cardX, cardY, colW, cardH, 'S');
+
+    setFont(8, 'bold', color);
+    doc.text(cat.nombre.toUpperCase(), cardX + 4, cardY + 5.5);
+    doc.setDrawColor(...color); doc.setLineWidth(0.2);
+    doc.line(cardX + 2, cardY + 7, cardX + colW - 2, cardY + 7);
+
+    setFont(7.5, 'normal', [58,54,96]);
+    let iy = cardY + 11;
+    itemLines.forEach(lines => {
+      lines.forEach(line => { doc.text(line, cardX + 4, iy); iy += 4.5; });
+    });
+
+    if (col === 0) baseY = Math.max(baseY, cardY + cardH + 3);
+    col++;
+    if (col === 2) { col = 0; y = baseY; }
+  });
+  if (col !== 0) y = baseY;
+  y += 6;
+
+  // ── 7. REFERENCIA APA 7
+  y = ensureSpace(40, y);
+  y = sectionTitle('Referencia bibliográfica (APA 7)', y);
+
+  const apaText = stripHtml(buildAPA(lastData));
+  const apaLines = doc.splitTextToSize(apaText, W - mar*2);
+  setFont(9, 'normal', [58,54,96]);
+  apaLines.forEach((line, i) => {
+    doc.text(line, i === 0 ? mar : mar + 5, y); y += 4.8;
+  });
+  y += 4;
+
+  setFont(10, 'bold', [91,78,255]);
+  doc.text('Citas en el texto', mar, y); y += 5;
+
+  setFont(9, 'normal', [58,54,96]);
+  doc.text('Cita parentética:  ' + buildInText(lastData), mar, y); y += 5;
+  doc.text('Cita narrativa:  ' + buildNarrative(lastData), mar, y); y += 8;
+
+  // Note box
+  doc.setFillColor(240,255,252); doc.setDrawColor(0,201,167); doc.setLineWidth(0.4);
+  const noteText = 'Nota: Verifique los datos bibliográficos contra el documento original. Generado automáticamente con IA — puede contener imprecisiones.';
+  const noteLines = doc.splitTextToSize(noteText, W - mar*2 - 6);
+  const noteH = noteLines.length * 4.5 + 6;
+  y = ensureSpace(noteH + 5, y);
+  doc.rect(mar, y, W - mar*2, noteH, 'F');
+  doc.rect(mar, y, W - mar*2, noteH, 'S');
+  setFont(7.5, 'italic', [0,140,118]);
+  doc.text(noteLines, mar + 3, y + 4);
+  y += noteH + 6;
+
+  // ── Footer en todas las páginas
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setFillColor(245,244,255); doc.rect(0, H - 10, W, 10, 'F');
+    setFont(7, 'normal', [176,174,200]);
+    doc.text('Generado con Claude AI · Anthropic · Mapa Mental Estado del Arte', mar, H - 4);
+    doc.text(`Página ${p} de ${totalPages}`, W - mar, H - 4, { align: 'right' });
+  }
+
+  savePDF(doc, `estado-del-arte_${safeFilename(lastData.titulo)}.pdf`, 'PDF completo');
+}
+
+// ── Helper universal para guardar PDF (compatible con sandbox/artefacto)
+function savePDF(doc, filename, label) {
+  try {
+    // Intento 1: descarga directa (funciona en local y servidores normales)
+    doc.save(filename);
+    toast((label || 'PDF') + ' descargado');
+  } catch(e) {
+    // Fallback: abrir en nueva pestaña
+    openPDFInNewTab(doc, filename, label);
+  }
+}
+
+function openPDFInNewTab(doc, filename, label) {
+  try {
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) {
+      // Si bloqueó pop-ups, ofrecer descarga manual con un link
+      offerManualDownload(url, filename, label);
+    } else {
+      toast('PDF abierto en nueva pestaña — usa "Guardar como"');
+      // Liberar URL después de 60s
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+  } catch(e2) {
+    toast('No se pudo generar el PDF: ' + e2.message);
+  }
+}
+
+function offerManualDownload(url, filename, label) {
+  // Crear un modal pequeño con un link visible
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+  overlay.innerHTML = `
+    <div style="background:var(--card);border:.5px solid var(--brd2);border-radius:16px;padding:1.5rem;max-width:380px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.3);">
+      <div style="font-family:'Instrument Serif',serif;font-size:1.2rem;color:var(--ink);margin-bottom:.5rem;">PDF generado</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;line-height:1.5;">Tu navegador bloqueó la descarga automática. Haz clic en el botón para abrirlo en una pestaña nueva y guardarlo manualmente.</p>
+      <a href="${url}" target="_blank" rel="noopener" download="${filename}" style="display:inline-block;padding:.7rem 1.4rem;background:var(--c1);color:#fff;border-radius:10px;text-decoration:none;font-weight:500;font-size:.9rem;margin-bottom:.5rem;">Abrir ${label || 'PDF'} →</a>
+      <button onclick="this.closest('[data-pdf-overlay]').remove();URL.revokeObjectURL('${url}')" style="display:block;margin:.5rem auto 0;padding:.4rem 1rem;background:none;border:.5px solid var(--brd2);border-radius:8px;color:var(--muted);cursor:pointer;font-family:inherit;font-size:.78rem;">Cerrar</button>
+    </div>`;
+  overlay.setAttribute('data-pdf-overlay', '1');
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+// ── Export JSON
+function exportJSON() {
+  if (!lastData) return;
+  const blob = new Blob([JSON.stringify(lastData, null, 2)], { type: 'application/json' });
+  saveBlob(blob, `analisis_${safeFilename(lastData.titulo)}.json`, 'JSON');
+}
+
+function safeFilename(s) {
+  return (s || 'documento').slice(0, 50)
+    .replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]/g, '')
+    .replace(/\s+/g, '-').toLowerCase() || 'documento';
+}
+
+// ── Reset
+function reset() {
+  pdfB64 = null; lastData = null; pdfMeta = {};
+  pdfInput.value = '';
+  $('filePill').classList.remove('on');
+  $('btnRun').disabled = true;
+  $('result').classList.remove('on');
+  $('uploadSection').style.display = '';
+  hideErr();
+  switchTab('visual');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => dropZone.focus(), 400);
+}
+
+window.addEventListener('resize', () => {
+  if (lastData && $('tab-visual').classList.contains('active')) requestAnimationFrame(() => drawCanvas(lastData));
+});
+
+// ── Atajos de teclado
+document.addEventListener('keydown', e => {
+  // Ctrl/Cmd + Enter → analizar
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (!$('btnRun').disabled) { e.preventDefault(); analyze(); }
+  }
+  // Esc → reset si hay resultado
+  if (e.key === 'Escape' && lastData && !isAnalyzing) {
+    e.preventDefault(); reset();
+  }
+  // 1-7 → cambiar tab si hay resultado
+  if (lastData && !isAnalyzing && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+    const idx = parseInt(e.key) - 1;
+    if (idx >= 0 && idx < TABS.length) {
+      e.preventDefault(); switchTab(TABS[idx]);
+    }
+  }
+});
+
+// Detectar cambio de tema oscuro/claro y redibujar
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (lastData && $('tab-visual').classList.contains('active')) drawCanvas(lastData);
+});
+
+// ── Utils
+function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s == null ? '' : s).replace(/'/g,"&#39;").replace(/"/g,'&quot;').replace(/\n/g,' '); }
+function stripHtml(s) { return String(s).replace(/<em>/g,'').replace(/<\/em>/g,'').replace(/<[^>]+>/g,''); }
+</script>
+</body>
+</html>
